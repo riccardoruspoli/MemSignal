@@ -15,6 +15,11 @@ MemSignal is a small project built out of curiosity, inspired by the concept of 
 
 MemSignal combines several Windows memory metrics into an approximate memory-pressure estimate and keeps the current state visible in the system tray.
 
+<p align="center">
+  <img src="docs/images/memsignal-light.png" width="47%" alt="MemSignal in light mode">
+  <img src="docs/images/memsignal-dark-details.png" width="47%" alt="MemSignal in dark mode with details open">
+</p>
+
 ## 🧭 What it shows
 
 MemSignal considers committed memory, available physical memory, paging activity, hard page reads, and pagefile usage when available. It reports an estimated pressure percentage together with a **Normal**, **Warning**, or **Critical** state.
