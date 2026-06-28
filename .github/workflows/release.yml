@@ -1,4 +1,5 @@
 name: release
+run-name: Build MemSignal release artifacts
 
 on:
   push:
