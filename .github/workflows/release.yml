@@ -1,0 +1,91 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  PROJECT_PATH: src/MemSignal.App.Wpf/MemSignal.App.Wpf.csproj
+  BUILD_CONFIGURATION: Release
+  RUNTIME_IDENTIFIER: win-x64
+  RELEASE_DIR: .tmp/github-release
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore MemSignal.sln
+
+      - name: Test
+        run: dotnet test MemSignal.sln -c ${{ env.BUILD_CONFIGURATION }} --no-restore
+
+      - name: Prepare release directory
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "${{ env.RELEASE_DIR }}" | Out-Null
+
+      - name: Publish framework-dependent
+        shell: pwsh
+        run: |
+          dotnet publish "${{ env.PROJECT_PATH }}" `
+            -c "${{ env.BUILD_CONFIGURATION }}" `
+            -r "${{ env.RUNTIME_IDENTIFIER }}" `
+            --self-contained false `
+            -p:PublishSingleFile=true `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            -o "${{ env.RELEASE_DIR }}/framework-dependent"
+          Copy-Item "${{ env.RELEASE_DIR }}/framework-dependent/MemSignal.exe" `
+            "${{ env.RELEASE_DIR }}/MemSignal-Windows-x64.exe" `
+            -Force
+
+      - name: Publish standalone
+        shell: pwsh
+        run: |
+          dotnet publish "${{ env.PROJECT_PATH }}" `
+            -c "${{ env.BUILD_CONFIGURATION }}" `
+            -r "${{ env.RUNTIME_IDENTIFIER }}" `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            -o "${{ env.RELEASE_DIR }}/standalone"
+          Copy-Item "${{ env.RELEASE_DIR }}/standalone/MemSignal.exe" `
+            "${{ env.RELEASE_DIR }}/MemSignal-Windows-x64-standalone.exe" `
+            -Force
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: MemSignal-release
+          path: |
+            .tmp/github-release/MemSignal-Windows-x64.exe
+            .tmp/github-release/MemSignal-Windows-x64-standalone.exe
+
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+        with:
+          files: |
+            .tmp/github-release/MemSignal-Windows-x64.exe
+            .tmp/github-release/MemSignal-Windows-x64-standalone.exe
+          generate_release_notes: true
